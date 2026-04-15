@@ -13,6 +13,10 @@ body {
   justify-content: center;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 .page-wrapper {
   width: 90%;
   max-width: 900px;
@@ -40,10 +44,11 @@ body {
 .search-section {
   margin: 30px 0;
   display: flex;
+  gap: 12px;
 }
 
 .search-section select {
-  width: 100%;
+  width: 45%;
   padding: 16px;
   font-size: 18px;
   border: 2px solid #000;
@@ -56,6 +61,31 @@ body {
 .search-section select:focus {
   outline: none;
   border-color: #666;
+}
+
+.search-section input {
+  width: 55%;
+  padding: 16px;
+  font-size: 18px;
+  border: 2px solid #000;
+  border-radius: 8px;
+  background-color: white;
+}
+
+.search-section input:focus {
+  outline: none;
+  border-color: #666;
+}
+
+@media (max-width: 720px) {
+  .search-section {
+    flex-direction: column;
+  }
+
+  .search-section select,
+  .search-section input {
+    width: 100%;
+  }
 }
 
 /* chat section */
@@ -79,6 +109,50 @@ body {
   overflow-y: auto;
   background: #fafafa;
   margin-bottom: 20px;
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.chat-message.user {
+  align-items: flex-end;
+}
+
+.chat-message.advisor {
+  align-items: flex-start;
+}
+
+.chat-sender {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #777;
+}
+
+.chat-bubble {
+  max-width: 86%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.chat-message.user .chat-bubble {
+  background: #ff003b;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message.advisor .chat-bubble {
+  background: #fff8eb;
+  color: #222;
+  border: 1px solid #e3a535;
+  border-bottom-left-radius: 4px;
 }
 
 /* placeholder message */
@@ -186,6 +260,21 @@ body {
   display: flex;
   gap: 15px;
   min-height: 160px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background-color 0.2s;
+}
+
+.product-card:hover {
+  border-color: #999;
+}
+
+.product-card.selected {
+  border: 2px solid #ff003b;
+  background-color: #fff8eb;
+  box-shadow: 0 0 0 2px #e3a535;
 }
 
 .product-card img {
@@ -213,6 +302,104 @@ body {
   color: #666;
 }
 
+.description-btn {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid #ff003b;
+  border-radius: 999px;
+  background: #fff;
+  color: #ff003b;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.description-btn:hover {
+  background: #fff8eb;
+  border-color: #e3a535;
+  color: #a67a21;
+}
+
+.description-btn:focus {
+  outline: 2px solid #e3a535;
+  outline-offset: 2px;
+}
+
+/* product description modal */
+.product-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.product-modal[hidden] {
+  display: none;
+}
+
+.product-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.product-modal-content {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 12px;
+  border: 2px solid #e3a535;
+  padding: 22px;
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.28);
+}
+
+.product-modal-content h3 {
+  font-size: 22px;
+  margin-right: 46px;
+  margin-bottom: 8px;
+}
+
+.product-modal-brand {
+  color: #ff003b;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.product-modal-description {
+  color: #333;
+  line-height: 1.6;
+}
+
+.close-modal-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: #ff003b;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.close-modal-btn:hover {
+  background: #e3a535;
+}
+
+.close-modal-btn:focus {
+  outline: 2px solid #e3a535;
+  outline-offset: 2px;
+}
+
 /* selected products */
 .selected-products {
   margin: 40px 0;
@@ -230,6 +417,59 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.clear-selected-btn {
+  border: 1px solid #ff003b;
+  border-radius: 999px;
+  background: #fff;
+  color: #ff003b;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clear-selected-btn:hover {
+  background: #fff8eb;
+  border-color: #e3a535;
+  color: #a67a21;
+}
+
+.selected-placeholder {
+  color: #666;
+  font-size: 16px;
+}
+
+.selected-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e3a535;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #fff8eb;
+}
+
+.selected-item span {
+  font-size: 14px;
+}
+
+.remove-selected-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: #ff003b;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.remove-selected-btn:hover {
+  background: #e3a535;
 }
 
 .generate-btn {
