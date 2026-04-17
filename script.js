@@ -4,6 +4,7 @@ const productSearchInput = document.getElementById("productSearchInput");
 const productsContainer = document.getElementById("productsContainer");
 const chatForm = document.getElementById("chatForm");
 const chatWindow = document.getElementById("chatWindow");
+const chatToggleButton = document.getElementById("toggleChatSize");
 const userInput = document.getElementById("userInput");
 const sendButton = document.getElementById("sendBtn");
 const selectedProductsList = document.getElementById("selectedProductsList");
@@ -13,6 +14,7 @@ const SELECTED_PRODUCTS_STORAGE_KEY = "lorealSelectedProductIds";
 const selectedProductIds = new Set();
 let allProducts = [];
 let lastFocusedDetailsButton = null;
+let productModalCloseTimeoutId = null;
 let generatedRoutineText = "";
 const conversationHistory = [];
 
@@ -27,6 +29,97 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+/* Fill the product description panel with the selected product details */
+function setProductModalContent(product) {
+  const modalTitle = document.getElementById("productModalTitle");
+  const modalBrand = document.getElementById("productModalBrand");
+  const modalDescription = document.getElementById("productModalDescription");
+
+  modalTitle.textContent = product.name;
+  modalBrand.textContent = product.brand;
+  modalDescription.textContent = product.description;
+}
+
+/* Build one chat message as HTML so the rendering code stays easy to read */
+function createChatMessageMarkup(message) {
+  const senderLabel = message.role === "user" ? "You" : "Advisor";
+  const bubbleClass =
+    message.role === "user" ? "chat-message user" : "chat-message advisor";
+  const safeContent = escapeHtml(message.content).replace(/\n/g, "<br>");
+
+  return `
+    <div class="${bubbleClass}">
+      <p class="chat-sender">${senderLabel}</p>
+      <div class="chat-bubble">${safeContent}</div>
+    </div>
+  `;
+}
+
+/* Build one selected product chip */
+function createSelectedProductMarkup(product) {
+  return `
+    <div class="selected-item" data-id="${product.id}">
+      <span>${product.name}</span>
+      <button type="button" class="remove-selected-btn" data-id="${product.id}" aria-label="Remove ${product.name}">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  `;
+}
+
+/* Build one product card */
+function createProductCardMarkup(product) {
+  const isSelected = selectedProductIds.has(product.id) ? "selected" : "";
+
+  return `
+    <div class="product-card ${isSelected}" data-id="${product.id}">
+      <img src="${product.image}" alt="${product.name}">
+      <div class="product-info">
+        <h3>${product.name}</h3>
+        <p>${product.brand}</p>
+        <button
+          type="button"
+          class="description-btn"
+          data-id="${product.id}"
+        >
+          Description
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/* Update the product card state in the grid without redrawing everything */
+function setProductCardSelectedState(productId, isSelected) {
+  const productCard = productsContainer.querySelector(
+    `.product-card[data-id="${productId}"]`,
+  );
+
+  if (productCard) {
+    productCard.classList.toggle("selected", isSelected);
+  }
+}
+
+/* Remove the selected style from every visible card */
+function clearAllProductCardSelections() {
+  const selectedCards = productsContainer.querySelectorAll(
+    ".product-card.selected",
+  );
+
+  selectedCards.forEach((card) => card.classList.remove("selected"));
+}
+
+/* Add or remove a product from the selection set */
+function toggleSelectedProduct(productId) {
+  if (selectedProductIds.has(productId)) {
+    selectedProductIds.delete(productId);
+    return false;
+  }
+
+  selectedProductIds.add(productId);
+  return true;
 }
 
 /* Create an accessible modal once and reuse it for all products */
@@ -53,28 +146,47 @@ productModal.innerHTML = `
 document.body.appendChild(productModal);
 
 function openProductModal(product, triggerButton) {
-  const modalTitle = document.getElementById("productModalTitle");
-  const modalBrand = document.getElementById("productModalBrand");
-  const modalDescription = document.getElementById("productModalDescription");
   const closeButton = productModal.querySelector(".close-modal-btn");
 
-  modalTitle.textContent = product.name;
-  modalBrand.textContent = product.brand;
-  modalDescription.textContent = product.description;
+  if (productModalCloseTimeoutId) {
+    clearTimeout(productModalCloseTimeoutId);
+    productModalCloseTimeoutId = null;
+  }
+
+  setProductModalContent(product);
 
   lastFocusedDetailsButton = triggerButton;
   productModal.hidden = false;
-  document.body.classList.add("modal-open");
+
+  /* Wait one frame so the opening animation has a chance to play */
+  requestAnimationFrame(() => {
+    productModal.classList.add("is-open");
+  });
   closeButton.focus();
 }
 
 function closeProductModal() {
-  productModal.hidden = true;
-  document.body.classList.remove("modal-open");
+  productModal.classList.remove("is-open");
+
+  /* Keep the element in the DOM briefly so the close animation can finish */
+  productModalCloseTimeoutId = window.setTimeout(() => {
+    productModal.hidden = true;
+    productModalCloseTimeoutId = null;
+  }, 220);
 
   if (lastFocusedDetailsButton) {
     lastFocusedDetailsButton.focus();
   }
+}
+
+/* Expand or collapse the chat window so more conversation is visible */
+function toggleChatBoxSize() {
+  const isExpanded = chatForm
+    .closest(".chatbox")
+    .classList.toggle("is-expanded");
+
+  chatToggleButton.textContent = isExpanded ? "Collapse" : "Expand";
+  chatToggleButton.setAttribute("aria-expanded", String(isExpanded));
 }
 
 /* Save selected product ids so they survive page reload */
@@ -112,31 +224,10 @@ function loadSelectedProductsFromStorage() {
   }
 }
 
-/* Render full conversation in the chat window */
+/* Render the entire conversation again whenever a new message is added */
 function renderConversation() {
   chatWindow.innerHTML = conversationHistory
-    .map((message) => {
-      const senderLabel = message.role === "user" ? "You" : "Advisor";
-      const bubbleClass =
-        message.role === "user" ? "chat-message user" : "chat-message advisor";
-      const safeContent = escapeHtml(message.content).replace(/\n/g, "<br>");
-
-      if (message.role === "user") {
-        return `
-          <div class="${bubbleClass}">
-            <p class="chat-sender">${senderLabel}</p>
-            <div class="chat-bubble">${safeContent}</div>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="${bubbleClass}">
-          <p class="chat-sender">${senderLabel}</p>
-          <div class="chat-bubble">${safeContent}</div>
-        </div>
-      `;
-    })
+    .map((message) => createChatMessageMarkup(message))
     .join("");
 
   chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -307,14 +398,7 @@ function renderSelectedProducts() {
         return "";
       }
 
-      return `
-        <div class="selected-item" data-id="${product.id}">
-          <span>${product.name}</span>
-          <button type="button" class="remove-selected-btn" data-id="${product.id}" aria-label="Remove ${product.name}">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      `;
+      return createSelectedProductMarkup(product);
     })
     .join("");
 
@@ -336,26 +420,7 @@ function displayProducts(products) {
   }
 
   productsContainer.innerHTML = products
-    .map(
-      (product) => `
-    <div class="product-card ${
-      selectedProductIds.has(product.id) ? "selected" : ""
-    }" data-id="${product.id}">
-      <img src="${product.image}" alt="${product.name}">
-      <div class="product-info">
-        <h3>${product.name}</h3>
-        <p>${product.brand}</p>
-        <button
-          type="button"
-          class="description-btn"
-          data-id="${product.id}"
-        >
-          Description
-        </button>
-      </div>
-    </div>
-  `,
-    )
+    .map((product) => createProductCardMarkup(product))
     .join("");
 }
 
@@ -407,13 +472,8 @@ productsContainer.addEventListener("click", (e) => {
 
   const productId = Number(clickedCard.dataset.id);
 
-  if (selectedProductIds.has(productId)) {
-    selectedProductIds.delete(productId);
-  } else {
-    selectedProductIds.add(productId);
-  }
-
-  clickedCard.classList.toggle("selected");
+  const isSelected = toggleSelectedProduct(productId);
+  clickedCard.classList.toggle("selected", isSelected);
   saveSelectedProductsToStorage();
   renderSelectedProducts();
 });
@@ -426,11 +486,7 @@ selectedProductsList.addEventListener("click", (e) => {
     selectedProductIds.clear();
     saveSelectedProductsToStorage();
     renderSelectedProducts();
-
-    const selectedCards = productsContainer.querySelectorAll(
-      ".product-card.selected",
-    );
-    selectedCards.forEach((card) => card.classList.remove("selected"));
+    clearAllProductCardSelections();
     return;
   }
 
@@ -442,14 +498,7 @@ selectedProductsList.addEventListener("click", (e) => {
   selectedProductIds.delete(productId);
   saveSelectedProductsToStorage();
   renderSelectedProducts();
-
-  const cardInGrid = productsContainer.querySelector(
-    `.product-card[data-id="${productId}"]`,
-  );
-
-  if (cardInGrid) {
-    cardInGrid.classList.remove("selected");
-  }
+  setProductCardSelectedState(productId, false);
 });
 
 /* Close modal on X button or outside click */
@@ -545,3 +594,5 @@ chatForm.addEventListener("submit", async (e) => {
     sendButton.disabled = false;
   }
 });
+
+chatToggleButton.addEventListener("click", toggleChatBoxSize);

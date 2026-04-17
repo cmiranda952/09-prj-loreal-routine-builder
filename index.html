@@ -59,7 +59,17 @@
 
       <!------- Chat Area ------->
       <section class="chatbox">
-        <h2>Let's Build Your Routine</h2>
+        <div class="chatbox-header">
+          <h2>Let's Build Your Routine</h2>
+          <button
+            type="button"
+            id="toggleChatSize"
+            class="chat-toggle-btn"
+            aria-expanded="false"
+          >
+            Expand
+          </button>
+        </div>
         <div id="chatWindow" class="chat-window"></div>
 
         <form id="chatForm" class="chat-form">
