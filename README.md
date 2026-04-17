@@ -97,8 +97,8 @@ This project is a good example of how several front-end ideas can work together:
 
 During the development of this project, a couple challenges presented themselves:
 
-- The description window appearing upon opening the website and not closable.
-- The cards for the products breaking when adding the product descriptions.
+- The description window appearing upon opening the website and not closable
+- The cards for the products breaking when adding the product descriptions
 
 ## Getting Started
 
